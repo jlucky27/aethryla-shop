@@ -37,7 +37,7 @@ export default async (req) => {
     if (us[n] || n === env("OWNER_USER").toLowerCase()) return J({ error: "That username is taken." }, 409);
     us[n] = { h: hash(b.password) };
     await S().setJSON("users", us);
-    return J({ t: sign({ u: n, r: "customer" }), u: n, r: "customer" });
+    return J({ t: sign({ u: n, r: "customer" }), u: n, r: "customer", pic: us[n]?.pic || "" });
   }
 
   if (p[0] === "login") {
@@ -48,19 +48,35 @@ export default async (req) => {
     const h = us[n]?.h;
     if (!h || hash(String(b.password || ""), h.split(":")[0]) !== h)
       return J({ error: "Wrong username or password." }, 401);
-    return J({ t: sign({ u: n, r: "customer" }), u: n, r: "customer" });
+    return J({ t: sign({ u: n, r: "customer" }), u: n, r: "customer", pic: us[n]?.pic || "" });
   }
 
   if (p[0] === "reviews" && m === "GET") {
     const r = await get("reviews");
-    return J(own && u.searchParams.get("all") ? r : r.filter((x) => x.show));
+    const us = await get("users");
+    const l = own && u.searchParams.get("all") ? r : r.filter((x) => x.show);
+    return J(l.map((x) => ({ ...x, pic: us[x.u]?.pic || "" })));
   }
 
   if (!me) return J({ error: "Please log in first." }, 401);
 
+  if (p[0] === "profile" && m === "POST") {
+    const pic = String(b.pic || "");
+    if (own || !pic.startsWith("data:image/jpeg;base64,") || pic.length > 30000) return J({ error: "Invalid photo." }, 400);
+    const us = await get("users");
+    if (!us[me.u]) return J({ error: "Account not found." }, 404);
+    us[me.u].pic = pic;
+    await S().setJSON("users", us);
+    return J({ pic });
+  }
+
   if (p[0] === "orders") {
     const o = await get("orders");
-    if (m === "GET") return J(own ? o : o.filter((x) => x.u === me.u));
+    if (m === "GET") {
+      if (!own) return J(o.filter((x) => x.u === me.u));
+      const us = await get("users");
+      return J(o.map((x) => ({ ...x, pic: us[x.u]?.pic || "" })));
+    }
 
     if (!p[1]) {
       const it = (Array.isArray(b.items) ? b.items : [])
@@ -113,3 +129,4 @@ export default async (req) => {
 
 export const config = { path: "/api/*" };
 
+        
