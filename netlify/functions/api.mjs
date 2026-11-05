@@ -8,6 +8,7 @@ const DEF = {
     { id: "unl", n: "Unlimited Buttons + TG Premium Emojis", p: 25, e: "✨", d: "Unlimited buttons with Telegram Premium emojis included.", img: "" },
   ],
   gcash: { name: "", no: "", qr: "" },
+  shop: { logo: "", cover: "", about: "" },
 };
 const env = (k) => process.env[k] || "";
 const SEC = () => env("SECRET") || env("OWNER_PASS") || "change-me";
@@ -109,10 +110,12 @@ export default async (req) => {
       let id = /^[a-z0-9-]{1,24}$/.test(String(q.id)) ? q.id : "p" + i + Date.now().toString(36);
       while (seen.has(id)) id += "x";
       seen.add(id);
-      return { id, n: clip(q.n, 80) || "Item", p: Math.min(1e6, Math.max(0, Number(q.p) || 0)), d: clip(q.d, 400), e: clip(q.e, 4) || "🎀", img: img(q.img, 150000) };
+      const imgs = (Array.isArray(q.imgs) && q.imgs.length ? q.imgs : [q.img]).slice(0, 6).map((s) => img(s, 150000)).filter(Boolean);
+      return { id, n: clip(q.n, 80) || "Item", p: Math.min(1e6, Math.max(0, Number(q.p) || 0)), d: clip(q.d, 3000), e: clip(q.e, 4) || "🎀", imgs, img: imgs[0] || "" };
     });
     const g = b.gcash || {};
-    const c = { products: ps, gcash: { name: clip(g.name, 60), no: clip(g.no, 40), qr: img(g.qr, 400000) } };
+    const sh = b.shop || {};
+    const c = { products: ps, gcash: { name: clip(g.name, 60), no: clip(g.no, 40), qr: img(g.qr, 400000) }, shop: { logo: img(sh.logo, 120000), cover: img(sh.cover, 250000), about: clip(sh.about, 3000) } };
     await S().setJSON("config", c);
     return J(c);
   }
@@ -231,3 +234,4 @@ export default async (req) => {
 
 export const config = { path: "/api/*" };
 
+        
